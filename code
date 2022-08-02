@@ -1,0 +1,194 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+typedef struct
+{
+    char* word[30];
+    struct node* left;
+    struct node* right;
+} node;
+node* newNode(char * str)
+{
+    node *n=malloc(sizeof(node));
+    strcpy(n->word,str);
+    n->left=n->right=NULL;
+    return n;
+}
+node* insertNode(node* root, char* str)
+{
+    if (!root)
+        root=newNode(str);
+    else if (strcasecmp(str,root->word)<0)
+        root->left=insertNode(root->left,str);
+    else if (strcasecmp(str,root->word)>0)
+        root->right=insertNode(root->right,str);
+    return root;
+}
+int max(int x, int y)
+{
+ return x>y?x:y;
+}
+
+node* GetMin (node* root)
+{
+    if (!root)
+        return NULL;
+    else if (!root->left)
+        return root;
+    else return GetMin(root->left);
+}
+
+node* GetMax (node* root)
+{
+    if (!root)
+        return NULL;
+    else if (!root->right)
+        return root;
+    else return GetMax(root->right);
+}
+
+int countNodes(node* root)
+{
+    if (!root)
+        return 0;
+    else
+        return 1+countNodes(root->left)+countNodes(root->right);
+}
+
+int getHeight(node* root)
+{
+    if (!root)
+        return -1;
+    else return 1+max(getHeight(root->left),getHeight(root->right));
+}
+
+
+node* load(node *root)
+{
+    FILE *fp;
+    fp=fopen("EN-US-Dictionary.txt","r");
+    if (!fp)
+    {
+        printf("Error loading dictionary");
+        exit(1);
+    }else
+      printf("Dictionary was successfully loaded\n");
+    char str[30];
+    while (!feof(fp))
+    {
+        fscanf(fp, "%s", str);
+        root=insertNode(root,str);
+    }
+    printf("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+    printf("Size=%d\n",countNodes(root));
+    printf("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+    printf("Height=%d\n",getHeight(root));
+    printf("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+    printf("Enter a sentence: \n");
+    fclose(fp);
+    return root;
+}
+node *getMin(node *n)
+{
+    if (n == NULL || n->left == NULL)
+        return n;
+    return getMin(n->left);
+}
+
+node *getMax(node *n)
+{
+    if (n == NULL || n->right == NULL)
+        return n;
+    return getMax(n->right);
+}
+
+node *getPredecessor(node *root,char *word, node* current)
+{   node * pre;
+    if (!current)
+        return current;
+    int comp;
+    if (current->left)
+        return GetMax(current->left);
+    else
+    {
+        pre = NULL;
+        node* ancestor = root;
+        while (ancestor!= current)
+        {
+            if (strcasecmp(ancestor->word, current->word)>0)
+            {
+                ancestor= ancestor->left;
+            }else
+            {
+                pre =ancestor;
+                ancestor=ancestor->right;
+             }
+        }
+    }
+    return pre;
+}
+node *getsuccessor(node *root,char *word, node* current)
+{   node * successor;
+    if (!current)
+        return current;
+    if (current->right)
+        return GetMin(current->right);
+    else
+    {
+        successor = NULL;
+        node* ancestor = root;
+        while (ancestor!= current)
+        {
+            if (strcasecmp(ancestor->word, current->word)>0)
+            {
+                successor =ancestor;
+                ancestor= ancestor->left;
+            }else ancestor=ancestor->right;
+        }
+    }
+    return successor;
+}
+void SearchWord (node* root,char * Word)
+{
+    node *currentNode = root;
+    node * trialNode = root;
+    node *lastNodeVisited = root;
+    int comparison=0, found=0;
+    while (currentNode)
+    {
+    lastNodeVisited = currentNode;
+    comparison = strcasecmp(Word,currentNode->word);
+    if (!comparison){
+           found = 1;
+           break;
+    }
+    else if (comparison<0)
+        currentNode=currentNode->left;
+    else if (comparison>0)
+        currentNode=currentNode->right;
+    }
+    if (found)
+        printf("%s - correct word\n",Word);
+    else printf("%s - incorrect word, Suggestions:%s  %s  %s\n", Word, lastNodeVisited->word,getsuccessor(trialNode,Word,lastNodeVisited)->word,getPredecessor(root,Word,lastNodeVisited)->word);
+}
+
+void SearchSentence (node* root, char* text)
+{
+    char *token = strtok(text, " \n");
+    while (token)
+    {
+        SearchWord(root, token);
+        token = strtok(NULL, " \n");
+    }
+}
+
+int main()
+{
+    node *root=NULL;
+    root=load(root);
+    char text[500];
+    fgets(text,500,stdin);
+    SearchSentence(root,text);
+    return 0;
+}
